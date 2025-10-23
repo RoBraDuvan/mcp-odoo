@@ -4,11 +4,13 @@ Un servidor MCP (Model Context Protocol) para integración con la API de Odoo me
 
 ## Características
 
-- Autenticación automática con Odoo
+- Listado de bases de datos disponibles
+- Autenticación automática con Odoo (con caché por base de datos)
 - Operaciones CRUD completas (Create, Read, Update, Delete)
 - Búsqueda y filtrado con dominios de Odoo
 - Obtención de metadatos de campos
 - Soporte para HTTP y HTTPS
+- Soporte para certificados SSL autofirmados
 
 ## Instalación
 
@@ -21,9 +23,10 @@ npm install
 El servidor utiliza variables de entorno para la configuración de conexión a Odoo:
 
 - `ODOO_URL`: URL de tu instancia de Odoo (default: `http://localhost:8069`)
-- `ODOO_DATABASE`: Nombre de la base de datos (default: `odoo`)
 - `ODOO_USERNAME`: Usuario de Odoo (default: `admin`)
 - `ODOO_PASSWORD`: Contraseña del usuario (default: `admin`)
+
+**Nota:** La base de datos NO se configura como variable de entorno. Debe especificarse como parámetro obligatorio en cada llamada a las herramientas MCP.
 
 ### Configuración en Claude Desktop
 
@@ -39,10 +42,9 @@ Agrega el servidor MCP:
   "mcpServers": {
     "odoo": {
       "command": "node",
-      "args": ["C:\\Users\\Duván Andrés\\Documents\\proyectos\\tools\\mcp\\index.js"],
+      "args": ["C:\\tools\\mcp\\index.js"],
       "env": {
         "ODOO_URL": "https://tu-instancia.odoo.com",
-        "ODOO_DATABASE": "tu_base_de_datos",
         "ODOO_USERNAME": "tu_usuario",
         "ODOO_PASSWORD": "tu_contraseña"
       }
@@ -53,10 +55,32 @@ Agrega el servidor MCP:
 
 ## Herramientas Disponibles
 
+### odoo_list_databases
+Lista todas las bases de datos disponibles en el servidor de Odoo. Esta herramienta es útil para descubrir qué bases de datos están disponibles antes de realizar operaciones.
+
+**Parámetros:**
+- Ninguno
+
+**Ejemplo:**
+```json
+{}
+```
+
+**Respuesta ejemplo:**
+```json
+[
+  "odoo",
+  "AMBIENTE_1",
+  "AMBIENTE_2",
+  "produccion"
+]
+```
+
 ### odoo_search
 Busca registros en un modelo de Odoo y retorna sus IDs.
 
 **Parámetros:**
+- `database` (requerido): Nombre de la base de datos de Odoo
 - `model` (requerido): Nombre del modelo de Odoo (ej: "res.partner", "sale.order")
 - `domain`: Array de filtros [["campo", "operador", "valor"]]
 - `limit`: Número máximo de registros (default: 100)
@@ -66,6 +90,7 @@ Busca registros en un modelo de Odoo y retorna sus IDs.
 **Ejemplo:**
 ```json
 {
+  "database": "mi_base_datos",
   "model": "res.partner",
   "domain": [["is_company", "=", true]],
   "limit": 10
@@ -76,6 +101,7 @@ Busca registros en un modelo de Odoo y retorna sus IDs.
 Busca y lee registros en una sola operación.
 
 **Parámetros:**
+- `database` (requerido): Nombre de la base de datos de Odoo
 - `model` (requerido): Nombre del modelo
 - `domain`: Array de filtros
 - `fields`: Array de campos a retornar (vacío retorna todos)
@@ -86,6 +112,7 @@ Busca y lee registros en una sola operación.
 **Ejemplo:**
 ```json
 {
+  "database": "mi_base_datos",
   "model": "res.partner",
   "domain": [["email", "!=", false]],
   "fields": ["name", "email", "phone"],
@@ -97,6 +124,7 @@ Busca y lee registros en una sola operación.
 Lee registros específicos por sus IDs.
 
 **Parámetros:**
+- `database` (requerido): Nombre de la base de datos de Odoo
 - `model` (requerido): Nombre del modelo
 - `ids` (requerido): Array de IDs a leer
 - `fields`: Array de campos a retornar
@@ -104,6 +132,7 @@ Lee registros específicos por sus IDs.
 **Ejemplo:**
 ```json
 {
+  "database": "mi_base_datos",
   "model": "res.partner",
   "ids": [1, 2, 3],
   "fields": ["name", "email"]
@@ -114,12 +143,14 @@ Lee registros específicos por sus IDs.
 Crea un nuevo registro.
 
 **Parámetros:**
+- `database` (requerido): Nombre de la base de datos de Odoo
 - `model` (requerido): Nombre del modelo
 - `values` (requerido): Objeto con los valores del nuevo registro
 
 **Ejemplo:**
 ```json
 {
+  "database": "mi_base_datos",
   "model": "res.partner",
   "values": {
     "name": "Nuevo Cliente",
@@ -133,6 +164,7 @@ Crea un nuevo registro.
 Actualiza registros existentes.
 
 **Parámetros:**
+- `database` (requerido): Nombre de la base de datos de Odoo
 - `model` (requerido): Nombre del modelo
 - `ids` (requerido): Array de IDs a actualizar
 - `values` (requerido): Objeto con los nuevos valores
@@ -140,6 +172,7 @@ Actualiza registros existentes.
 **Ejemplo:**
 ```json
 {
+  "database": "mi_base_datos",
   "model": "res.partner",
   "ids": [1],
   "values": {
@@ -152,12 +185,14 @@ Actualiza registros existentes.
 Elimina registros.
 
 **Parámetros:**
+- `database` (requerido): Nombre de la base de datos de Odoo
 - `model` (requerido): Nombre del modelo
 - `ids` (requerido): Array de IDs a eliminar
 
 **Ejemplo:**
 ```json
 {
+  "database": "mi_base_datos",
   "model": "res.partner",
   "ids": [1, 2]
 }
@@ -167,6 +202,7 @@ Elimina registros.
 Obtiene las definiciones de campos de un modelo.
 
 **Parámetros:**
+- `database` (requerido): Nombre de la base de datos de Odoo
 - `model` (requerido): Nombre del modelo
 - `fields`: Array de nombres de campos específicos
 - `attributes`: Array de atributos a retornar
@@ -174,6 +210,7 @@ Obtiene las definiciones de campos de un modelo.
 **Ejemplo:**
 ```json
 {
+  "database": "mi_base_datos",
   "model": "res.partner",
   "fields": ["name", "email"],
   "attributes": ["string", "type", "required"]
@@ -184,12 +221,14 @@ Obtiene las definiciones de campos de un modelo.
 Cuenta los registros que coinciden con un dominio.
 
 **Parámetros:**
+- `database` (requerido): Nombre de la base de datos de Odoo
 - `model` (requerido): Nombre del modelo
 - `domain`: Array de filtros
 
 **Ejemplo:**
 ```json
 {
+  "database": "mi_base_datos",
   "model": "sale.order",
   "domain": [["state", "=", "sale"]]
 }

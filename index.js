@@ -8,10 +8,9 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { OdooClient } from './odoo-client.js';
 
-// Configuration - can be passed via environment variables
+// Configuration - URL, username and password from environment
 const config = {
   url: process.env.ODOO_URL || 'http://localhost:8069',
-  database: process.env.ODOO_DATABASE || 'odoo',
   username: process.env.ODOO_USERNAME || 'admin',
   password: process.env.ODOO_PASSWORD || 'admin',
 };
@@ -41,6 +40,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: {
           type: 'object',
           properties: {
+            database: {
+              type: 'string',
+              description: 'The Odoo database name to connect to',
+            },
             model: {
               type: 'string',
               description: 'The Odoo model name (e.g., "res.partner", "sale.order")',
@@ -65,7 +68,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               description: 'Order by field (e.g., "name ASC", "create_date DESC")',
             },
           },
-          required: ['model'],
+          required: ['database', 'model'],
         },
       },
       {
@@ -74,6 +77,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: {
           type: 'object',
           properties: {
+            database: {
+              type: 'string',
+              description: 'The Odoo database name to connect to',
+            },
             model: {
               type: 'string',
               description: 'The Odoo model name (e.g., "res.partner", "sale.order")',
@@ -106,7 +113,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               description: 'Order by field',
             },
           },
-          required: ['model'],
+          required: ['database', 'model'],
         },
       },
       {
@@ -115,6 +122,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: {
           type: 'object',
           properties: {
+            database: {
+              type: 'string',
+              description: 'The Odoo database name to connect to',
+            },
             model: {
               type: 'string',
               description: 'The Odoo model name',
@@ -135,7 +146,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               default: [],
             },
           },
-          required: ['model', 'ids'],
+          required: ['database', 'model', 'ids'],
         },
       },
       {
@@ -144,6 +155,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: {
           type: 'object',
           properties: {
+            database: {
+              type: 'string',
+              description: 'The Odoo database name to connect to',
+            },
             model: {
               type: 'string',
               description: 'The Odoo model name',
@@ -153,7 +168,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               description: 'Object with field names and values for the new record',
             },
           },
-          required: ['model', 'values'],
+          required: ['database', 'model', 'values'],
         },
       },
       {
@@ -162,6 +177,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: {
           type: 'object',
           properties: {
+            database: {
+              type: 'string',
+              description: 'The Odoo database name to connect to',
+            },
             model: {
               type: 'string',
               description: 'The Odoo model name',
@@ -178,7 +197,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               description: 'Object with field names and new values',
             },
           },
-          required: ['model', 'ids', 'values'],
+          required: ['database', 'model', 'ids', 'values'],
         },
       },
       {
@@ -187,6 +206,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: {
           type: 'object',
           properties: {
+            database: {
+              type: 'string',
+              description: 'The Odoo database name to connect to',
+            },
             model: {
               type: 'string',
               description: 'The Odoo model name',
@@ -199,7 +222,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               },
             },
           },
-          required: ['model', 'ids'],
+          required: ['database', 'model', 'ids'],
         },
       },
       {
@@ -208,6 +231,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: {
           type: 'object',
           properties: {
+            database: {
+              type: 'string',
+              description: 'The Odoo database name to connect to',
+            },
             model: {
               type: 'string',
               description: 'The Odoo model name',
@@ -229,7 +256,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               default: [],
             },
           },
-          required: ['model'],
+          required: ['database', 'model'],
         },
       },
       {
@@ -238,6 +265,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: {
           type: 'object',
           properties: {
+            database: {
+              type: 'string',
+              description: 'The Odoo database name to connect to',
+            },
             model: {
               type: 'string',
               description: 'The Odoo model name',
@@ -248,7 +279,16 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               default: [],
             },
           },
-          required: ['model'],
+          required: ['database', 'model'],
+        },
+      },
+      {
+        name: 'odoo_list_databases',
+        description: 'List all available databases on the Odoo server. This helps discover which databases are available to connect to.',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+          required: [],
         },
       },
     ],
@@ -262,11 +302,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     switch (name) {
       case 'odoo_search': {
-        const { model, domain = [], limit = 100, offset = 0, order } = args;
+        const { database, model, domain = [], limit = 100, offset = 0, order } = args;
         const options = { limit, offset };
         if (order) options.order = order;
 
-        const result = await odooClient.search(model, domain, options);
+        const result = await odooClient.search(database, model, domain, options);
         return {
           content: [
             {
@@ -278,11 +318,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'odoo_search_read': {
-        const { model, domain = [], fields = [], limit = 100, offset = 0, order } = args;
+        const { database, model, domain = [], fields = [], limit = 100, offset = 0, order } = args;
         const options = { limit, offset };
         if (order) options.order = order;
 
-        const result = await odooClient.searchRead(model, domain, fields, options);
+        const result = await odooClient.searchRead(database, model, domain, fields, options);
         return {
           content: [
             {
@@ -294,8 +334,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'odoo_read': {
-        const { model, ids, fields = [] } = args;
-        const result = await odooClient.read(model, ids, fields);
+        const { database, model, ids, fields = [] } = args;
+        const result = await odooClient.read(database, model, ids, fields);
         return {
           content: [
             {
@@ -307,8 +347,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'odoo_create': {
-        const { model, values } = args;
-        const result = await odooClient.create(model, values);
+        const { database, model, values } = args;
+        const result = await odooClient.create(database, model, values);
         return {
           content: [
             {
@@ -320,8 +360,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'odoo_write': {
-        const { model, ids, values } = args;
-        const result = await odooClient.write(model, ids, values);
+        const { database, model, ids, values } = args;
+        const result = await odooClient.write(database, model, ids, values);
         return {
           content: [
             {
@@ -333,8 +373,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'odoo_delete': {
-        const { model, ids } = args;
-        const result = await odooClient.unlink(model, ids);
+        const { database, model, ids } = args;
+        const result = await odooClient.unlink(database, model, ids);
         return {
           content: [
             {
@@ -346,8 +386,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'odoo_fields_get': {
-        const { model, fields = [], attributes = [] } = args;
-        const result = await odooClient.fieldsGet(model, fields, attributes);
+        const { database, model, fields = [], attributes = [] } = args;
+        const result = await odooClient.fieldsGet(database, model, fields, attributes);
         return {
           content: [
             {
@@ -359,13 +399,25 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'odoo_search_count': {
-        const { model, domain = [] } = args;
-        const result = await odooClient.searchCount(model, domain);
+        const { database, model, domain = [] } = args;
+        const result = await odooClient.searchCount(database, model, domain);
         return {
           content: [
             {
               type: 'text',
               text: `Count: ${result}`,
+            },
+          ],
+        };
+      }
+
+      case 'odoo_list_databases': {
+        const result = await odooClient.listDatabases();
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result, null, 2),
             },
           ],
         };

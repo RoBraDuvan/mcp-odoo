@@ -4,10 +4,9 @@ import https from 'https';
 export class OdooClient {
   constructor(config) {
     this.url = config.url;
-    this.db = config.database;
     this.username = config.username;
     this.password = config.password;
-    this.uid = null;
+    this.uidCache = {}; // Cache UIDs by database
 
     // Parse URL to get host and port
     const urlObj = new URL(this.url);
@@ -35,16 +34,16 @@ export class OdooClient {
       : xmlrpc.createClient(options);
   }
 
-  async authenticate() {
-    if (this.uid) {
-      return this.uid;
+  async authenticate(database) {
+    if (this.uidCache[database]) {
+      return this.uidCache[database];
     }
 
     const client = this.createClient('/xmlrpc/2/common');
 
     return new Promise((resolve, reject) => {
       client.methodCall('authenticate', [
-        this.db,
+        database,
         this.username,
         this.password,
         {}
@@ -54,22 +53,22 @@ export class OdooClient {
         } else if (!uid) {
           reject(new Error('Authentication failed: Invalid credentials'));
         } else {
-          this.uid = uid;
+          this.uidCache[database] = uid;
           resolve(uid);
         }
       });
     });
   }
 
-  async execute_kw(model, method, args = [], kwargs = {}) {
-    await this.authenticate();
+  async execute_kw(database, model, method, args = [], kwargs = {}) {
+    const uid = await this.authenticate(database);
 
     const client = this.createClient('/xmlrpc/2/object');
 
     return new Promise((resolve, reject) => {
       client.methodCall('execute_kw', [
-        this.db,
-        this.uid,
+        database,
+        uid,
         this.password,
         model,
         method,
@@ -85,7 +84,7 @@ export class OdooClient {
     });
   }
 
-  async search(model, domain = [], options = {}) {
+  async search(database, model, domain = [], options = {}) {
     const kwargs = {
       offset: options.offset || 0,
       limit: options.limit || 100,
@@ -95,10 +94,10 @@ export class OdooClient {
       kwargs.order = options.order;
     }
 
-    return this.execute_kw(model, 'search', [domain], kwargs);
+    return this.execute_kw(database, model, 'search', [domain], kwargs);
   }
 
-  async searchRead(model, domain = [], fields = [], options = {}) {
+  async searchRead(database, model, domain = [], fields = [], options = {}) {
     const kwargs = {
       fields: fields,
       offset: options.offset || 0,
@@ -109,35 +108,49 @@ export class OdooClient {
       kwargs.order = options.order;
     }
 
-    return this.execute_kw(model, 'search_read', [domain], kwargs);
+    return this.execute_kw(database, model, 'search_read', [domain], kwargs);
   }
 
-  async read(model, ids, fields = []) {
+  async read(database, model, ids, fields = []) {
     const kwargs = fields.length > 0 ? { fields: fields } : {};
-    return this.execute_kw(model, 'read', [ids], kwargs);
+    return this.execute_kw(database, model, 'read', [ids], kwargs);
   }
 
-  async create(model, values) {
-    return this.execute_kw(model, 'create', [values]);
+  async create(database, model, values) {
+    return this.execute_kw(database, model, 'create', [values]);
   }
 
-  async write(model, ids, values) {
-    return this.execute_kw(model, 'write', [ids, values]);
+  async write(database, model, ids, values) {
+    return this.execute_kw(database, model, 'write', [ids, values]);
   }
 
-  async unlink(model, ids) {
-    return this.execute_kw(model, 'unlink', [ids]);
+  async unlink(database, model, ids) {
+    return this.execute_kw(database, model, 'unlink', [ids]);
   }
 
-  async fieldsGet(model, fields = [], attributes = []) {
+  async fieldsGet(database, model, fields = [], attributes = []) {
     const kwargs = {};
     if (attributes.length > 0) {
       kwargs.attributes = attributes;
     }
-    return this.execute_kw(model, 'fields_get', fields.length > 0 ? [fields] : [], kwargs);
+    return this.execute_kw(database, model, 'fields_get', fields.length > 0 ? [fields] : [], kwargs);
   }
 
-  async searchCount(model, domain = []) {
-    return this.execute_kw(model, 'search_count', [domain]);
+  async searchCount(database, model, domain = []) {
+    return this.execute_kw(database, model, 'search_count', [domain]);
+  }
+
+  async listDatabases() {
+    const client = this.createClient('/xmlrpc/2/db');
+
+    return new Promise((resolve, reject) => {
+      client.methodCall('list', [], (error, databases) => {
+        if (error) {
+          reject(new Error(`Failed to list databases: ${error.message}`));
+        } else {
+          resolve(databases);
+        }
+      });
+    });
   }
 }
