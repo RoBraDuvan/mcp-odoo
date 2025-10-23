@@ -51,6 +51,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             domain: {
               type: 'array',
               description: 'Search domain as array of tuples [["field", "operator", "value"]]. Example: [["name", "ilike", "John"]]',
+              items: {},
               default: [],
             },
             limit: {
@@ -88,6 +89,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             domain: {
               type: 'array',
               description: 'Search domain as array of tuples [["field", "operator", "value"]]',
+              items: {},
               default: [],
             },
             fields: {
@@ -276,6 +278,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             domain: {
               type: 'array',
               description: 'Search domain as array of tuples',
+              items: {},
               default: [],
             },
           },
